@@ -1,7 +1,8 @@
 CONFIG = {
     'origins': [
-        '*.phila.gov',
         'localhost',
         'cityofphiladelphia.github.io',
+        'phila.gov',
+        'atlas.phila.gov',
     ],
 }
