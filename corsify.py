@@ -7,12 +7,14 @@ import requests
 from config import CONFIG
 
 app = Flask(__name__)
-CORS(app, origins=CONFIG['origins'])
+CORS(app, origins=CONFIG.get('origins') or ['*'])
 
-ALLOWED_HOSTS = CONFIG['allowed_hosts']
+ALLOWED_HOSTS = CONFIG.get('allowed_hosts') or ['*']
 should_limit_hosts = '*' not in ALLOWED_HOSTS
 # TODO use one of these patterns https://mathiasbynens.be/demo/url-regex
-URL_PAT = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+# the following doesn't seem to be catching some API URLs
+# URL_PAT = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+URL_PAT = '.+'
 
 class RegexConverter(BaseConverter):
     '''Custom handler for regex-based routing'''
