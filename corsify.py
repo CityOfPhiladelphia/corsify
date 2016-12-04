@@ -10,6 +10,7 @@ app = Flask(__name__)
 CORS(app, origins=CONFIG['origins'])
 
 ALLOWED_HOSTS = CONFIG['allowed_hosts']
+should_limit_hosts = '*' not in ALLOWED_HOSTS
 # TODO use one of these patterns https://mathiasbynens.be/demo/url-regex
 URL_PAT = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 
@@ -41,7 +42,7 @@ def get(url):
     parsed = urlparse(url)
     if len(parsed.scheme) == 0:
         raise InvalidUsage('No scheme in URL (e.g. http, https)')
-    if parsed.netloc not in ALLOWED_HOSTS:
+    if should_limit_hosts and parsed.netloc not in ALLOWED_HOSTS:
         raise InvalidUsage('Host `{}` not allowed'.format(parsed.netloc))
 
     r = requests.get(url, params=request.args)

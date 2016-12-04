@@ -2,10 +2,7 @@ CONFIG = {
     # downstream hosts
     'origins': [
         'localhost',
-        'cityofphiladelphia.github.io',
-        'phila.gov',
-        'www.phila.gov',
-        'atlas.phila.gov',
+        '0.0.0.0',
     ],
     # upstream hosts
     'allowed_hosts': [
