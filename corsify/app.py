@@ -5,7 +5,7 @@ from json.decoder import JSONDecodeError
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
-from util import RegexConverter, InvalidUsage
+from .util import RegexConverter, InvalidUsage
 
 
 # config

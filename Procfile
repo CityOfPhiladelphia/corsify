@@ -1,1 +1,1 @@
-web: gunicorn corsify:app --worker-class gevent
+web: gunicorn corsify.app:app --worker-class gevent
