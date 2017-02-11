@@ -1,58 +1,64 @@
+import os
+import warnings
 from urllib.parse import urlparse
 from json.decoder import JSONDecodeError
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from werkzeug.routing import BaseConverter
 import requests
-from config import CONFIG
+from util import RegexConverter, InvalidUsage
 
-app = Flask(__name__)
-CORS(app, origins=CONFIG.get('origins') or ['*'])
 
-ALLOWED_HOSTS = CONFIG.get('allowed_hosts') or ['*']
-should_limit_hosts = '*' not in ALLOWED_HOSTS
+# config
+ORIGINS = os.environ.get('CORSIFY_ORIGINS')
+HOSTS = os.environ.get('CORSIFY_HOSTS')
+if not ORIGINS:
+    raise ValueError('Environment variables CORSIFY_ORIGINS not set')
+if not HOSTS:
+    raise ValueError('Environment variables CORSIFY_HOSTS not set')
+ORIGINS = ORIGINS.split(',')
+HOSTS = HOSTS.split(',')
+SHOULD_LIMIT_HOSTS = '*' not in HOSTS
 # TODO use one of these patterns https://mathiasbynens.be/demo/url-regex
 # the following doesn't seem to be catching some API URLs
 # URL_PAT = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 URL_PAT = '.+'
 
-class RegexConverter(BaseConverter):
-    '''Custom handler for regex-based routing'''
-    def __init__(self, url_map, *items):
-        super(RegexConverter, self).__init__(url_map)
-        self.regex = items[0]
+# warn on permissive hosts/origins
+if '*' in ORIGINS:
+    warnings.warn('A wildcard was found in ORIGINS, so they will not be '
+                  'filtered.')
+if '*' in HOSTS:
+    warnings.warn('A wildcard was found in HOSTS, so they will not be '
+                  'filtered.')
+
+# create app
+app = Flask(__name__)
+
+# add cors
+CORS(app, origins=ORIGINS)
+
+# use regex for routing
 app.url_map.converters['regex'] = RegexConverter
-
-class InvalidUsage(Exception):
-    '''Error handler that accepts a message and status code (defaults to 400)'''
-    def __init__(self, message, status_code=400):
-        self.message = message
-        self.status_code = status_code
-
-    def to_dict(self):
-        return {key: getattr(self, key) for key in ['message', 'status_code']}
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
+    """Generic error handler"""
     response = jsonify(error.to_dict())
     return response
 
 @app.route('/<regex("{}"):url>'.format(URL_PAT))
 def get(url):
-    print('url: {}'.format(url))
-    # parse url and check a few things
+    """Main route for adding CORS headers to things"""
+
+    # parse url and check for issues in request
     parsed = urlparse(url)
     if len(parsed.scheme) == 0:
         raise InvalidUsage('No scheme in URL (e.g. http, https)')
-    if should_limit_hosts and parsed.netloc not in ALLOWED_HOSTS:
+    if SHOULD_LIMIT_HOSTS and parsed.netloc not in HOSTS:
         raise InvalidUsage('Host `{}` not allowed'.format(parsed.netloc))
 
-    r = requests.get(url, params=request.args)
+    # get response
+    resp = requests.get(url, params=request.args)
+    content_type = resp.headers['Content-Type']
 
-    # force json, bc it seems defensive-ish and it's our only use case right now
-    try:
-        json = r.json()
-    except JSONDecodeError:
-        raise InvalidUsage('Not a valid JSON response')
-
-    return jsonify(json)
+    return (resp.text, resp.status_code, {'Content-Type': content_type})
